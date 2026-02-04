@@ -305,7 +305,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <input type="file" ref={folderInputRef} className="hidden" multiple onChange={handleFolderInput} />
+      <input type="file" ref={folderInputRef} className="hidden" multiple onChange={handleFolderInput} webkitdirectory="true" directory="true" />
       <input type="file" ref={fileInputRef} className="hidden" multiple accept=".json" onChange={handleUploadFiles} />
 
       <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
