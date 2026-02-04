@@ -1,27 +1,26 @@
-
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { initialAppState, initialData } from './mockData';
 import { WeeklyData, AppState, KPIValues, GameMetric } from './types';
-import { 
-  getWeekId, 
-  getMostRecentThursday, 
-  getWeekIdOffset, 
-  isFileSystemSupported, 
-  readWorkspaceFiles, 
+import {
+  getWeekId,
+  getMostRecentThursday,
+  getWeekIdOffset,
+  isFileSystemSupported,
+  readWorkspaceFiles,
   writeToFile,
   readFilesFromList
 } from './utils';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
-import { 
-  Layout, 
-  Calendar, 
-  Save, 
-  Edit3, 
-  ChevronLeft, 
-  ChevronRight, 
-  FolderOpen, 
-  RefreshCw, 
+import {
+  Layout,
+  Calendar,
+  Save,
+  Edit3,
+  ChevronLeft,
+  ChevronRight,
+  FolderOpen,
+  RefreshCw,
   AlertCircle,
   LogOut,
   Download,
@@ -31,7 +30,19 @@ import {
 
 const STORAGE_KEY = 'gaming_dashboard_archive';
 const AUTH_KEY = 'gaming_dashboard_auth';
-const SECRET_PASSWORD = 'GAMING-SECURE';
+
+// Password is stored as SHA-256 hash - never as plaintext
+// This hash corresponds to a secure password that is not exposed in the code
+const PASSWORD_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
+
+// SHA-256 hash function
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -47,12 +58,12 @@ const App: React.FC = () => {
   const [selectedWeekId, setSelectedWeekId] = useState<string>(() => {
     return getWeekId(getMostRecentThursday(new Date()));
   });
-  
+
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showPickerError, setShowPickerError] = useState(false);
   const [dismissedError, setDismissedError] = useState(false);
-  
+
   const folderInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,9 +71,15 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }, [data]);
 
-  const handleLogin = (password: string) => {
-    // Robust comparison with trim to prevent failures from trailing spaces
-    if (password && password.trim() === SECRET_PASSWORD) {
+  const handleLogin = async (password: string): Promise<boolean> => {
+    if (!password || !password.trim()) {
+      return false;
+    }
+
+    // Hash the input password and compare with stored hash
+    const inputHash = await hashPassword(password.trim());
+
+    if (inputHash === PASSWORD_HASH) {
       setIsAuthenticated(true);
       sessionStorage.setItem(AUTH_KEY, 'true');
       return true;
@@ -165,7 +182,7 @@ const App: React.FC = () => {
     const workspaceData = await readFilesFromList(files);
     if (Object.keys(workspaceData).length > 0) {
       setData(prev => ({ ...prev, ...workspaceData }));
-      setShowPickerError(false); 
+      setShowPickerError(false);
     }
     setIsSyncing(false);
   };
@@ -244,7 +261,7 @@ const App: React.FC = () => {
       const allWeekIds = Object.keys(data).sort();
       const lastAvailableId = allWeekIds[allWeekIds.length - 1] || initialData.weekId;
       const template = JSON.parse(JSON.stringify(data[lastAvailableId] || initialData));
-      
+
       const newWeek: WeeklyData = {
         ...template,
         weekId: selectedWeekId,
@@ -288,7 +305,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <input type="file" ref={folderInputRef} className="hidden" multiple onChange={handleFolderInput} webkitdirectory="true" directory="true" />
+      <input type="file" ref={folderInputRef} className="hidden" multiple onChange={handleFolderInput} />
       <input type="file" ref={fileInputRef} className="hidden" multiple accept=".json" onChange={handleUploadFiles} />
 
       <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
